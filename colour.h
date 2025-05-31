@@ -2,7 +2,7 @@
 #define COLOUR_H
 
 #include "vec3.h"
-#include <iostream>
+#include "rtweekend.h"
 
 using colour = vec3;
 
