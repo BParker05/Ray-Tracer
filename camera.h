@@ -8,6 +8,8 @@ class camera {
     public:
         double aspectRatio = 1.0;
         int imageWidth = 512;
+        int samplesPerPixel = 10;
+        int maxDepth = 10;
 
         void render(const hittable& world){
             initialize();
@@ -21,12 +23,12 @@ class camera {
             for (int j = 0; j < imageHeight; j++) {
                 std::clog << "\rScanlines remaining: " << (imageHeight - j) << ' ' << std::flush;
                 for (int i = 0; i < imageWidth; i++) {
-                    auto pixelCentre = pixel100Loc + (i * pixelDeltaU) + (j * pixelDeltaV);
-                    auto rayDirection = pixelCentre - center;
-                    ray r(center, rayDirection);
-
-                    colour pixelColour = rayColour(r, world);
-                    write_colour(outFile, pixelColour);
+                    colour pixelColour(0, 0, 0);
+                    for (int sample = 0; sample < samplesPerPixel; sample++) {
+                        ray r = getRay(i,j);
+                        pixelColour += rayColour(r, maxDepth, world);
+                    }
+                    write_colour(outFile, pixelSampleScale * pixelColour);
                 }
             }
             std::clog << "\rDone.                 \n";
@@ -34,6 +36,7 @@ class camera {
 
     private:
         int imageHeight;
+        double pixelSampleScale;
         point3 center;
         point3 pixel100Loc;
         vec3 pixelDeltaU;
@@ -42,6 +45,8 @@ class camera {
         void initialize(){
             imageHeight = int(imageWidth / aspectRatio);
             imageHeight = (imageHeight < 1) ? 1 : imageHeight;
+
+            pixelSampleScale = 1.0 / samplesPerPixel;
 
             center = point3(0, 0, 0);
 
@@ -59,10 +64,28 @@ class camera {
             pixel100Loc = viewportUpperLeft + 0.5 * (pixelDeltaU + pixelDeltaV);
         }
 
-        colour rayColour(const ray& r, const hittable& world) {
+        ray getRay(int i, int j) const {
+            auto offset = sampleSquare();
+            auto pixelSample = pixel100Loc + ((i + offset.x()) * pixelDeltaU) + ((j + offset.y()) * pixelDeltaV);
+
+            auto rayOrigin = center;
+            auto rayDirection = pixelSample - rayOrigin;
+
+            return ray(rayOrigin, rayDirection);
+        }
+
+        vec3 sampleSquare() const {
+            return vec3(randomDouble() - 0.5, randomDouble() - 0.5, 0);
+        }
+
+        colour rayColour(const ray& r, int depth, const hittable& world) {
+            if (depth <= 0) {
+                return colour(0,0,0);
+            }
             hitRecord rec;
-            if (world.hit(r, interval(0, infinity), rec)) {
-                return 0.5 * (rec.normal + colour(1, 1, 1));
+            if (world.hit(r, interval(0.001, infinity), rec)) {
+                vec3 direction = rec.normal + randomUnitVector();
+                return 0.1 * rayColour(ray(rec.p, direction), depth-1, world);
             }
 
             vec3 unitDirection = unitVector(r.direction());
