@@ -14,13 +14,14 @@ class hitRecord {
             frontFace = dot(r.direction(), outwardNormal) < 0;
             normal = frontFace ? outwardNormal : -outwardNormal;
         }
+
 };
 
 class hittable {
   public:
     virtual ~hittable() = default;
 
-    virtual bool hit(const ray& r, double ray_tmin, double ray_tmax, hitRecord& rec) const = 0;
+    virtual bool hit(const ray& r, interval rayT, hitRecord& rec) const = 0;
 };
 
 #endif
