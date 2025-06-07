@@ -12,6 +12,14 @@ class camera {
         int samplesPerPixel = 10;
         int maxDepth = 10;
 
+        double vfov = 90.0;
+        point3 lookFrom = point3(0,0,0);
+        point3 lookAt = point3(0,0,-1);
+        vec3 vup = vec3(0,1,0);
+
+        double defocusAngle = 0;
+        double focusDistance = 10;
+
         void render(const hittable& world){
             initialize();
 
@@ -42,6 +50,9 @@ class camera {
         point3 pixel100Loc;
         vec3 pixelDeltaU;
         vec3 pixelDeltaV;
+        vec3 u, v, w;
+        vec3 defocusDiskU;
+        vec3 defocusDiskV;
 
         void initialize(){
             imageHeight = int(imageWidth / aspectRatio);
@@ -49,27 +60,36 @@ class camera {
 
             pixelSampleScale = 1.0 / samplesPerPixel;
 
-            center = point3(0, 0, 0);
+            center = lookFrom;
 
-            auto focalLength = 1.0;
-            auto viewportHeight = 2.0;
+            auto theta = degreesToRadians(vfov);
+            auto h = std::tan(theta/2);
+            auto viewportHeight = 2 * h * focusDistance;
             auto viewportWidth = viewportHeight * (double(imageWidth) / imageHeight);
 
-            auto viewportU = vec3(viewportWidth, 0, 0);
-            auto viewportV = vec3(0, -viewportHeight, 0);
+            w = unitVector(lookFrom - lookAt);
+            u = unitVector(cross(vup, w));
+            v = cross(w, u);
+
+            auto viewportU = viewportWidth * u;
+            auto viewportV = viewportHeight * -v;
 
             pixelDeltaU = viewportU / imageWidth;
             pixelDeltaV = viewportV / imageHeight;
 
-            auto viewportUpperLeft = center - vec3(0, 0, focalLength) - viewportU / 2 - viewportV / 2;
+            auto viewportUpperLeft = center - (focusDistance * w) - viewportU/2 - viewportV/2;
             pixel100Loc = viewportUpperLeft + 0.5 * (pixelDeltaU + pixelDeltaV);
+
+            auto defocusRadius = focusDistance * std::tan(degreesToRadians(defocusAngle / 2));
+            defocusDiskU = u * defocusRadius;
+            defocusDiskV = v * defocusRadius;            
         }
 
         ray getRay(int i, int j) const {
             auto offset = sampleSquare();
             auto pixelSample = pixel100Loc + ((i + offset.x()) * pixelDeltaU) + ((j + offset.y()) * pixelDeltaV);
 
-            auto rayOrigin = center;
+            auto rayOrigin = (defocusAngle <= 0) ? center : defocusDiskSample();
             auto rayDirection = pixelSample - rayOrigin;
 
             return ray(rayOrigin, rayDirection);
@@ -78,6 +98,12 @@ class camera {
         vec3 sampleSquare() const {
             return vec3(randomDouble() - 0.5, randomDouble() - 0.5, 0);
         }
+        
+        point3 defocusDiskSample() const {
+            auto p = randomInUnitDisk();
+            return center + (p[0] * defocusDiskU) + (p[1] * defocusDiskV);
+        }
+
 
         colour rayColour(const ray& r, int depth, const hittable& world) {
             if (depth <= 0) {
