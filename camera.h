@@ -11,6 +11,7 @@ class camera {
         int imageWidth = 512;
         int samplesPerPixel = 10;
         int maxDepth = 10;
+        bool antialiasing;
 
         double vfov = 90.0;
         point3 lookFrom = point3(0,0,0);
@@ -32,12 +33,11 @@ class camera {
             for (int j = 0; j < imageHeight; j++) {
                 std::clog << "\rScanlines remaining: " << (imageHeight - j) << ' ' << std::flush;
                 for (int i = 0; i < imageWidth; i++) {
-                    colour pixelColour(0, 0, 0);
-                    for (int sample = 0; sample < samplesPerPixel; sample++) {
-                        ray r = getRay(i,j);
-                        pixelColour += rayColour(r, maxDepth, world);
+                    if (antialiasing) {
+                        drawWithAntialiasing(outFile, i, j, world);
+                    } else {
+                        drawWithoutAntialiasing(outFile, i, j, world);
                     }
-                    write_colour(outFile, pixelSampleScale * pixelColour);
                 }
             }
             std::clog << "\rDone.                 \n";
@@ -53,6 +53,24 @@ class camera {
         vec3 u, v, w;
         vec3 defocusDiskU;
         vec3 defocusDiskV;
+
+        void drawWithoutAntialiasing(std::ostream& out, int i, int j, const hittable& world){
+            auto pixelCenter = pixel100Loc + (i * pixelDeltaU) + (j * pixelDeltaV);
+                auto rayDirection = pixelCenter - center;
+                ray r(center, rayDirection);
+
+                colour pixelColour = rayColour(r, maxDepth, world);
+                writeColour(out, pixelColour);
+        }
+
+        void drawWithAntialiasing(std::ostream& out, int i, int j, const hittable& world){
+            colour pixelColour(0, 0, 0);
+            for (int sample = 0; sample < samplesPerPixel; sample++) {
+                ray r = getRay(i,j);
+                pixelColour += rayColour(r, maxDepth, world);
+            }
+            writeColour(out, pixelSampleScale * pixelColour);
+        }
 
         void initialize(){
             imageHeight = int(imageWidth / aspectRatio);

@@ -1,4 +1,4 @@
-#include "rtweekend.h"
+#include "utility.h"
 
 #include "camera.h"
 #include "hittable.h"
@@ -53,8 +53,9 @@ int main() {
 
     cam.aspectRatio      = 16.0 / 9.0;
     cam.imageWidth       = 1200;
-    cam.samplesPerPixel = 500;
+    cam.samplesPerPixel = 5;
     cam.maxDepth         = 50;
+    cam.antialiasing = false;
 
     cam.vfov     = 20;
     cam.lookFrom = point3(13,2,3);

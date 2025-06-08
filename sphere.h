@@ -2,7 +2,7 @@
 #define SPHERE_H
 
 #include "hittable.h"
-#include "rtweekend.h"
+#include "utility.h"
 
 class sphere : public hittable {
     public:
